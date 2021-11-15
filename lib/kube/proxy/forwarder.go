@@ -48,6 +48,7 @@ import (
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/session"
 	"github.com/gravitational/teleport/lib/srv"
+	"github.com/gravitational/teleport/lib/srv/alpnproxy"
 	"github.com/gravitational/teleport/lib/sshca"
 	"github.com/gravitational/teleport/lib/utils"
 
@@ -1426,6 +1427,10 @@ func (f *Forwarder) newClusterSessionRemoteCluster(ctx authContext) (*clusterSes
 		f.log.Warningf("Failed to get certificate for %v: %v.", ctx, err)
 		return nil, trace.AccessDenied("access denied: failed to authenticate with auth server")
 	}
+
+	// Set 'kube.teleport.cluster.local' as ServerName to leverage TLS Routing.
+	// The connection will be either forwarded directly to kubernetes_service or by TLS Routing router.
+	tlsConfig.ServerName = fmt.Sprintf("%s.%s", alpnproxy.KubeSNIPrefix, constants.APIDomain)
 
 	f.log.Debugf("Forwarding kubernetes session for %v to remote cluster.", ctx)
 	sess := &clusterSession{

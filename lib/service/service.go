@@ -2988,7 +2988,7 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 		AccessPoint:         accessPoint,
 		HostSigner:          conn.ServerIdentity.KeySigner,
 		LocalCluster:        conn.ServerIdentity.Cert.Extensions[utils.CertExtensionAuthority],
-		KubeDialAddr:        utils.DialAddrFromListenAddr(cfg.Proxy.Kube.ListenAddr),
+		KubeDialAddr:        utils.DialAddrFromListenAddr(kubeDialAddr(cfg)),
 		ReverseTunnelServer: tsrv,
 		FIPS:                process.Config.FIPS,
 	})
@@ -3242,6 +3242,17 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 		return trace.Wrap(err)
 	}
 	return nil
+}
+
+// kubeDialAddr returns Proxy Kube service address used for dialing local kube service
+// by remote trusted cluster.
+// If the proxy is running with V2 configuration the WebPort is returned
+// where connections are forwarded to kube service by ALPN SNI router.
+func kubeDialAddr(config *Config) utils.NetAddr {
+	if config.Version == defaults.TeleportConfigVersionV2 {
+		return config.Proxy.WebAddr
+	}
+	return config.Proxy.Kube.ListenAddr
 }
 
 func (process *TeleportProcess) setupProxyTLSConfig(conn *Connector, tsrv reversetunnel.Server, accessPoint auth.ReadProxyAccessPoint, clusterName string) (*tls.Config, error) {
